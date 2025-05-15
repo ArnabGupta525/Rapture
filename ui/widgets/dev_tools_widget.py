@@ -14,6 +14,8 @@ class DeveloperToolsWidget(QWidget):
         super().__init__(parent)
         self.setup_ui()
         self.command_workers = []
+        self.current_theme = "Nord Dark (Default)"
+        self.current_font_size = "Medium (Default)"
         
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -392,6 +394,209 @@ class DeveloperToolsWidget(QWidget):
                     category_item.addChild(command_item)
             
             domain_item.setExpanded(True)
+
+
+    def update_theme(self, theme_name):
+        """Update the widget's theme to match the application theme"""
+        self.current_theme = theme_name
+        
+        # Get theme colors
+        themes = {
+            "Nord Dark (Default)": {
+                "main_bg": "#2E3440",
+                "secondary_bg": "#3B4252",
+                "highlight_bg": "#4C566A",
+                "accent": "#88C0D0",
+                "text": "#ECEFF4",
+                "secondary_text": "#D8DEE9",
+                "success": "#A3BE8C"
+            },
+            "Nord Light": {
+                "main_bg": "#ECEFF4",
+                "secondary_bg": "#E5E9F0",
+                "highlight_bg": "#D8DEE9",
+                "accent": "#5E81AC",
+                "text": "#2E3440",
+                "secondary_text": "#4C566A",
+                "success": "#A3BE8C"
+            },
+            "Dracula": {
+                "main_bg": "#282a36",
+                "secondary_bg": "#44475a",
+                "highlight_bg": "#6272a4",
+                "accent": "#8be9fd",
+                "text": "#f8f8f2",
+                "secondary_text": "#f8f8f2",
+                "success": "#50fa7b"
+            },
+            "Solarized Dark": {
+                "main_bg": "#002b36",
+                "secondary_bg": "#073642",
+                "highlight_bg": "#586e75",
+                "accent": "#2aa198",
+                "text": "#fdf6e3",
+                "secondary_text": "#eee8d5",
+                "success": "#859900"
+            },
+            "Solarized Light": {
+                "main_bg": "#fdf6e3",
+                "secondary_bg": "#eee8d5",
+                "highlight_bg": "#93a1a1",
+                "accent": "#2aa198",
+                "text": "#002b36",
+                "secondary_text": "#073642",
+                "success": "#859900"
+            }
+        }
+        
+        colors = themes.get(theme_name, themes["Nord Dark (Default)"])
+        
+        # Apply styles to tree widget
+        self.tree_widget.setStyleSheet(f"""
+            QTreeWidget {{
+                background-color: {colors["main_bg"]};
+                border: none;
+                outline: none;
+                color: {colors["text"]};
+            }}
+            QTreeWidget::item {{
+                padding: 5px;
+                border-radius: 2px;
+            }}
+            QTreeWidget::item:selected {{
+                background-color: {colors["highlight_bg"]};
+            }}
+            QTreeWidget::item:hover {{
+                background-color: {colors["secondary_bg"]};
+            }}
+        """)
+        
+        # Apply styles to command header and description
+        self.command_header.setStyleSheet(f"color: {colors['text']};")
+        self.command_description.setStyleSheet(f"color: {colors['secondary_text']};")
+        
+        # Apply styles to execution frame
+        execution_frame = self.findChild(QFrame)
+        if execution_frame:
+            execution_frame.setStyleSheet(f"background-color: {colors['secondary_bg']}; border-radius: 5px; padding: 15px;")
+        
+        # Apply styles to command input
+        self.command_text.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {colors['main_bg']};
+                color: {colors['success']};
+                border-radius: 3px;
+                padding: 8px;
+                selection-background-color: {colors['highlight_bg']};
+            }}
+        """)
+        
+        # Apply styles to buttons
+        self.execute_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['success']};
+                color: {colors['main_bg']};
+                border-radius: 5px;
+                padding: 10px;
+                min-width: 150px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['accent']};
+            }}
+        """)
+        
+        self.terminal_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['accent']};
+                color: {colors['main_bg']};
+                border-radius: 5px;
+                padding: 10px;
+                min-width: 150px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['highlight_bg']};
+            }}
+        """)
+        
+        # Apply styles to result output
+        self.result_output.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {colors['main_bg']};
+                color: {colors['text']};
+                border-radius: 3px;
+                selection-background-color: {colors['highlight_bg']};
+            }}
+        """)
+
+
+
+
+    def update_font_size(self, font_size_name):
+        """Update the widget's font sizes"""
+        self.current_font_size = font_size_name
+        
+        # Define font sizes for different elements
+        font_sizes = {
+            "Small": {
+                "header": 14,
+                "subheader": 12,
+                "normal": 9,
+                "small": 8
+            },
+            "Medium (Default)": {
+                "header": 16,
+                "subheader": 14,
+                "normal": 10,
+                "small": 9
+            },
+            "Large": {
+                "header": 18,
+                "subheader": 16,
+                "normal": 12,
+                "small": 10
+            },
+            "Extra Large": {
+                "header": 20,
+                "subheader": 18,
+                "normal": 14,
+                "small": 12
+            }
+        }
+        
+        sizes = font_sizes.get(font_size_name, font_sizes["Medium (Default)"])
+        
+        # Update header font
+        self.command_header.setFont(QFont("Arial", sizes["header"], QFont.Bold))
+        
+        # Update description font
+        self.command_description.setFont(QFont("Arial", sizes["normal"]))
+        
+        # Update tree widget fonts
+        for i in range(self.tree_widget.topLevelItemCount()):
+            domain_item = self.tree_widget.topLevelItem(i)
+            domain_item.setFont(0, QFont("Arial", sizes["subheader"], QFont.Bold))
+            
+            for j in range(domain_item.childCount()):
+                category_item = domain_item.child(j)
+                category_item.setFont(0, QFont("Arial", sizes["normal"]))
+                
+                for k in range(category_item.childCount()):
+                    command_item = category_item.child(k)
+                    command_item.setFont(0, QFont("Arial", sizes["small"]))
+        
+        # Update command input font
+        self.command_text.setFont(QFont("Consolas", sizes["normal"]))
+        
+        # Update buttons fonts
+        self.execute_button.setFont(QFont("Arial", sizes["normal"]))
+        self.terminal_button.setFont(QFont("Arial", sizes["normal"]))
+        
+        # Update result output font
+        self.result_output.setFont(QFont("Consolas", sizes["small"]))
+
+
+
+
             
     def _get_os_specific_command(self, cmd):
         """Return OS-specific version of commands"""

@@ -9,24 +9,48 @@ class ProfileWidget(QWidget):
     """Widget to display system information"""
     def __init__(self):
         super().__init__()
+        self.current_theme = "Nord Dark (Default)"
+        self.current_font_size = "Medium (Default)"
+        self.setup_ui()
+        
+    def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
         
         # Profile header
-        header = QLabel("System Profile")
-        header.setFont(QFont("Arial", 16, QFont.Bold))
-        header.setStyleSheet("color: #ECEFF4;")
-        layout.addWidget(header)
+        self.header = QLabel("System Profile")
+        self.header.setFont(QFont("Arial", 16, QFont.Bold))
+        self.header.setStyleSheet("color: #ECEFF4;")
+        layout.addWidget(self.header)
         
         # System information widget
-        info_frame = QFrame()
-        info_frame.setStyleSheet("background-color: #3B4252; border-radius: 5px; padding: 15px;")
-        info_layout = QGridLayout(info_frame)
+        self.info_frame = QFrame()
+        self.info_frame.setStyleSheet("background-color: #3B4252; border-radius: 5px; padding: 15px;")
+        self.info_layout = QGridLayout(self.info_frame)
         
         # Get system information
         self.system_info = self.get_system_info()
         
+        # Display system information in a grid
+        self.populate_system_info()
+        
+        # Create a scroll area for the system info
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidget(self.info_frame)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.NoFrame)
+        layout.addWidget(self.scroll_area)
+    
+    def populate_system_info(self):
+        """Populate the grid with system information"""
+        # Clear existing items
+        while self.info_layout.count():
+            item = self.info_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+                
         # Display system information in a grid
         row = 0
         for category, items in self.system_info.items():
@@ -34,7 +58,7 @@ class ProfileWidget(QWidget):
             category_label = QLabel(category)
             category_label.setFont(QFont("Arial", 12, QFont.Bold))
             category_label.setStyleSheet("color: #88C0D0;")
-            info_layout.addWidget(category_label, row, 0, 1, 2)
+            self.info_layout.addWidget(category_label, row, 0, 1, 2)
             row += 1
             
             # Category items
@@ -45,21 +69,14 @@ class ProfileWidget(QWidget):
                 value_label.setStyleSheet("color: #A3BE8C;")
                 value_label.setWordWrap(True)
                 
-                info_layout.addWidget(key_label, row, 0)
-                info_layout.addWidget(value_label, row, 1)
+                self.info_layout.addWidget(key_label, row, 0)
+                self.info_layout.addWidget(value_label, row, 1)
                 row += 1
                 
             # Add spacing between categories
             spacer = QLabel("")
-            info_layout.addWidget(spacer, row, 0)
+            self.info_layout.addWidget(spacer, row, 0)
             row += 1
-        
-        # Create a scroll area for the system info
-        scroll_area = QScrollArea()
-        scroll_area.setWidget(info_frame)
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setFrameShape(QFrame.NoFrame)
-        layout.addWidget(scroll_area)
         
     def get_system_info(self):
         """Gather detailed system information"""
@@ -111,3 +128,150 @@ class ProfileWidget(QWidget):
             pass
             
         return system_info
+    
+    def update_theme(self, theme_name):
+        """Update the widget's theme to match the application theme"""
+        self.current_theme = theme_name
+        
+        # Get theme colors
+        themes = {
+            "Nord Dark (Default)": {
+                "main_bg": "#2E3440",
+                "secondary_bg": "#3B4252",
+                "highlight_bg": "#4C566A",
+                "accent": "#88C0D0",
+                "text": "#ECEFF4",
+                "secondary_text": "#D8DEE9",
+                "success": "#A3BE8C"
+            },
+            "Nord Light": {
+                "main_bg": "#ECEFF4",
+                "secondary_bg": "#E5E9F0",
+                "highlight_bg": "#D8DEE9",
+                "accent": "#5E81AC",
+                "text": "#2E3440",
+                "secondary_text": "#4C566A",
+                "success": "#A3BE8C"
+            },
+            "Dracula": {
+                "main_bg": "#282a36",
+                "secondary_bg": "#44475a",
+                "highlight_bg": "#6272a4",
+                "accent": "#8be9fd",
+                "text": "#f8f8f2",
+                "secondary_text": "#f8f8f2",
+                "success": "#50fa7b"
+            },
+            "Solarized Dark": {
+                "main_bg": "#002b36",
+                "secondary_bg": "#073642",
+                "highlight_bg": "#586e75",
+                "accent": "#2aa198",
+                "text": "#fdf6e3",
+                "secondary_text": "#eee8d5",
+                "success": "#859900"
+            },
+            "Solarized Light": {
+                "main_bg": "#fdf6e3",
+                "secondary_bg": "#eee8d5",
+                "highlight_bg": "#93a1a1",
+                "accent": "#2aa198",
+                "text": "#002b36",
+                "secondary_text": "#073642",
+                "success": "#859900"
+            }
+        }
+        
+        colors = themes.get(theme_name, themes["Nord Dark (Default)"])
+        
+        # Apply styles to header
+        self.header.setStyleSheet(f"color: {colors['text']};")
+        
+        # Apply styles to info frame
+        self.info_frame.setStyleSheet(f"background-color: {colors['secondary_bg']}; border-radius: 5px; padding: 15px;")
+        
+        # Apply styles to scroll area
+        self.scroll_area.setStyleSheet(f"background-color: {colors['main_bg']}; border: none;")
+        
+        # Refresh system info display to apply new styles
+        self.populate_system_info()
+        
+        # Update category headers and values
+        for row in range(self.info_layout.rowCount()):
+            widget_item = self.info_layout.itemAtPosition(row, 0)
+            if widget_item and widget_item.widget():
+                widget = widget_item.widget()
+                if isinstance(widget, QLabel):
+                    text = widget.text()
+                    if text in self.system_info:
+                        # This is a category header
+                        widget.setStyleSheet(f"color: {colors['accent']};")
+                    else:
+                        # This is a key label
+                        widget.setStyleSheet(f"color: {colors['text']};")
+            
+            value_item = self.info_layout.itemAtPosition(row, 1)
+            if value_item and value_item.widget():
+                value_widget = value_item.widget()
+                if isinstance(value_widget, QLabel):
+                    value_widget.setStyleSheet(f"color: {colors['success']};")
+    
+    def update_font_size(self, font_size_name):
+        """Update the widget's font sizes"""
+        self.current_font_size = font_size_name
+        
+        # Define font sizes for different elements
+        font_sizes = {
+            "Small": {
+                "header": 14,
+                "subheader": 12,
+                "normal": 9,
+                "small": 8
+            },
+            "Medium (Default)": {
+                "header": 16,
+                "subheader": 14,
+                "normal": 10,
+                "small": 9
+            },
+            "Large": {
+                "header": 18,
+                "subheader": 16,
+                "normal": 12,
+                "small": 10
+            },
+            "Extra Large": {
+                "header": 20,
+                "subheader": 18,
+                "normal": 14,
+                "small": 12
+            }
+        }
+        
+        sizes = font_sizes.get(font_size_name, font_sizes["Medium (Default)"])
+        
+        # Update header font
+        self.header.setFont(QFont("Arial", sizes["header"], QFont.Bold))
+        
+        # Refresh system info display to apply new font sizes
+        self.populate_system_info()
+        
+        # Update fonts in grid items
+        for row in range(self.info_layout.rowCount()):
+            widget_item = self.info_layout.itemAtPosition(row, 0)
+            if widget_item and widget_item.widget():
+                widget = widget_item.widget()
+                if isinstance(widget, QLabel):
+                    text = widget.text()
+                    if text in self.system_info:
+                        # This is a category header
+                        widget.setFont(QFont("Arial", sizes["subheader"], QFont.Bold))
+                    else:
+                        # This is a key label
+                        widget.setFont(QFont("Arial", sizes["normal"]))
+            
+            value_item = self.info_layout.itemAtPosition(row, 1)
+            if value_item and value_item.widget():
+                value_widget = value_item.widget()
+                if isinstance(value_widget, QLabel):
+                    value_widget.setFont(QFont("Arial", sizes["normal"]))
