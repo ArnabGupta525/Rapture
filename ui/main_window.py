@@ -63,6 +63,13 @@ class MainWindow(QMainWindow):
         self.ai_chat_tab = AIChatWidget()
         self.settings_tab = SettingsWidget()
         
+        # Connect ProfileWidget's context_updated signal to AIChatWidget's update_command_context method
+        self.profile_tab.context_updated.connect(self.ai_chat_tab.update_command_context)
+        
+        # Initialize AI chat with the current context from ProfileWidget
+        initial_context = self.profile_tab.get_command_context()
+        self.ai_chat_tab.update_command_context(initial_context)
+        
         # Connect settings signals to theme and font size changes
         self.settings_tab.theme_changed.connect(self.apply_theme)
         self.settings_tab.font_size_changed.connect(self.apply_font_size)
@@ -74,8 +81,23 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.settings_tab, "Settings")
         main_layout.addWidget(self.tab_widget)
         
+        # Connect widgets to share data
+        self.connect_widgets()
+        
         # Set central widget
         self.setCentralWidget(central_widget)
+
+    def connect_widgets(self):
+        """Connect widgets to share data between them"""
+        # Pass system information from profile widget to AI chat widget
+        system_info = self.profile_tab.get_system_info_dict()
+        self.ai_chat_tab.update_system_context_with_system_info(system_info)
+        
+        # Add this line to directly connect the profile widget's context_updated signal
+        # to the AI chat widget's update_command_context method
+        self.profile_tab.context_updated.connect(self.ai_chat_tab.update_command_context)
+        # Debug message to confirm connection
+        print("Connected widgets and shared system information")
     
     def load_settings(self):
         """Load application settings"""

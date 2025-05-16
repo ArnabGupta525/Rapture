@@ -49,9 +49,16 @@ class AIChatWidget(QWidget):
         super().__init__()
         self.current_theme = "Nord Dark (Default)"
         self.current_font_size = "Medium (Default)"
+        
+        self.system_info = {}
         self.setup_ui()
-        self.response_thread = None
-        self.command_workers = []
+        self.current_command_context = {
+          "name": "Current Directory",
+          "path": os.getcwd()
+        }
+        self.command_workers = []  # Add a list to track command workers
+        self.response_thread = None  # Initialize response thread to None
+        # Rest of initialization remains the same
         
         # Initialize with saved API key or empty string
         saved_key = self.load_api_key()
@@ -318,6 +325,65 @@ class AIChatWidget(QWidget):
         
         # Add a welcome message
         self.chat_display.append("<span style='color:#88C0D0;'>DevAssist AI:</span> Welcome to DevAssist! I'm here to help with your development questions and troubleshooting issues. I can suggest and execute commands to fix problems. How can I assist you today?")
+
+        pass
+
+
+
+    # Add this function to AIChatWidget class in AIChatWidget.py
+    def update_system_context_with_system_info(self, system_info):
+       """Updates the system context with system information"""
+       # Create a simplified version of the system info for the context
+       self.system_info = system_info
+       simplified_info = {
+          "os": system_info["System"]["OS"],
+          "architecture": system_info["System"]["Architecture"],
+          "cpu_cores": system_info["Hardware"]["CPU Cores"],
+          "ram": system_info["Hardware"]["RAM"],
+          "python_version": system_info["Python Environment"]["Python Version"]
+        }
+    
+        # Add storage info if available
+       if "Storage" in system_info:
+          simplified_info["storage"] = list(system_info["Storage"].items())[0][1]
+    
+        # Format the system info as a string for the context
+       system_info_str = json.dumps(simplified_info, indent=2)
+    
+       # Update the system context to include system information
+       self.system_context = f"""You are DevAssist AI, an expert in software development, 
+          troubleshooting, and technical assistance. 
+          Help users solve programming errors, installation issues, 
+          and provide guidance on development tools and technologies.
+        
+          You have access to the following system information about the user's computer.
+          Use this information to provide tailored commands and solutions specific to their system:
+        
+          {system_info_str}
+        
+          When you identify a problem that requires executing a command to fix or diagnose,
+          format your suggestion clearly as follows:
+        
+          "I recommend running this command to fix the issue:
+          ```bash
+          [the command to run]
+          ```"
+    
+          Important guidelines:
+          1. Provide clear but concise explanations of what a command does.
+          2. When analyzing command output, focus only on what's important.
+          3. After analyzing the output of an executed command, DO NOT suggest additional commands 
+             unless explicitly asked by the user.
+          4. Keep your responses focused and brief - no more than 3-4 paragraphs.
+          5. Don't overexplain or provide additional information unless requested.
+          6. Always consider the user's specific operating system ({simplified_info["os"]}) when 
+             suggesting commands or solutions.
+          
+          Be direct and to the point while remaining helpful."""
+
+       
+
+
         
     def send_message(self):
         """Send user message to the AI assistant"""
@@ -398,31 +464,47 @@ class AIChatWidget(QWidget):
         self.command_frame.setVisible(False)
         self.command_output.setVisible(False)
     
+    # Update this method in the AIChatWidget class (in services/chat_widgets.py)
+
     def execute_suggested_command(self):
-        """Execute the suggested command after confirmation"""
-        command = self.command_display.text()
+       """Execute the suggested command after confirmation"""
+       command = self.command_display.text()
+    
+       # Ensure we have a valid working directory
+       working_dir = self.current_command_context['path']
+       context_name = self.current_command_context['name']
+    
+       # Make sure the directory exists
+       if not os.path.exists(working_dir):
+           self.command_output.setVisible(True)
+           self.command_output.clear()
+           self.command_output.append(f"Error: The directory '{working_dir}' does not exist.")
+           return
+    
+       # Ask for confirmation
+       reply = QMessageBox.question(
+           self, 
+           "Execute Command",
+           f"Are you sure you want to execute this command?\n\n{command}\n\nIn directory: {working_dir}",
+           QMessageBox.Yes | QMessageBox.No,
+           QMessageBox.No
+       )
+    
+       if reply == QMessageBox.Yes:
+           # Show the output area
+           self.command_output.setVisible(True)
+           self.command_output.clear()
+           self.command_output.append(f"Executing: {command}")
+           self.command_output.append(f"Working directory: {working_dir}")
+           self.command_output.append(f"Context: {context_name}\n")
+           self.command_output.append("Please wait...\n\n")
         
-        # Ask for confirmation
-        reply = QMessageBox.question(
-            self, 
-            "Execute Command",
-            f"Are you sure you want to execute this command?\n\n{command}",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-        
-        if reply == QMessageBox.Yes:
-            # Show the output area
-            self.command_output.setVisible(True)
-            self.command_output.clear()
-            self.command_output.append(f"Executing: {command}\n")
-            self.command_output.append("Please wait...\n\n")
-            
-            # Create worker thread for command execution
-            worker = CommandWorker(command)
-            self.command_workers.append(worker)  # Keep a reference
-            worker.finished.connect(self.handle_command_result)
-            worker.start()
+           # Create worker thread for command execution
+           # Make sure we're passing the current context path explicitly
+           worker = CommandWorker(command, working_dir=working_dir)
+           self.command_workers.append(worker)  # Keep a reference
+           worker.finished.connect(self.handle_command_result)
+           worker.start()
     
     def handle_command_result(self, stdout, stderr):
          """Handle the result of command execution"""
@@ -519,6 +601,63 @@ class AIChatWidget(QWidget):
             except (json.JSONDecodeError, FileNotFoundError):
                 return ''
         return ''
+    
+
+    def execute_command(self, command):
+       """Execute a command with the current command context"""
+       # Create a command worker with the current context path
+       self.command_worker = CommandWorker(command, self.current_command_context['path'])
+       # Connect signals
+       self.command_worker.finished.connect(self.on_command_finished)
+       # Start the worker
+       self.command_worker.start()
+
+    def on_command_finished(self, stdout, stderr):
+        """Handle command execution completion"""
+        # Process results...
+        pass
+
+
+    def update_command_context(self, context_info):
+      """Update the command execution context"""
+      # Store the context information
+      self.current_command_context = context_info
+    
+      # Log the context update for debugging
+      print(f"AI Chat Command Context updated to: {context_info['name']} - {context_info['path']}")
+
+
+      # Add a visual indication in the chat
+      self.chat_display.append(f"<span style='color:#A3BE8C;'><b>System:</b></span> Command execution context changed to: {context_info['name']} - {context_info['path']}")
+
+
+      # Update the command worker if it exists
+      if hasattr(self, 'command_worker'):
+          self.command_worker.working_dir = context_info['path']
+    
+      # Update the system context to include this information
+      if hasattr(self, 'system_context') and self.system_context:
+          # Add or update context information in the system context
+          context_info_str = f"""
+          Commands should be executed in the following context:
+          - Context: {context_info['name']}
+          - Directory: {context_info['path']}
+          """
+      
+          # Check if we already have context info in the system context
+          if "Commands should be executed in the following context:" in self.system_context:
+              # Replace the existing context info
+              pattern = r"Commands should be executed in the following context:.*?(?=\n\n|\Z)"
+              self.system_context = re.sub(pattern, context_info_str.strip(), self.system_context, flags=re.DOTALL)
+          else:
+              # Add the context info to the end of the system context
+              self.system_context += "\n\n" + context_info_str
+            
+      # Update UI to reflect the current context
+      if hasattr(self, 'command_frame') and self.command_frame.isVisible():
+          # If there's already a command being shown, update its context message
+          if hasattr(self, 'command_label'):
+              self.command_label.setText(f"DevAssist suggests running this command in {context_info['name']}:")
     
     def update_theme(self, theme_name):
         """Update the widget's theme to match the application theme"""

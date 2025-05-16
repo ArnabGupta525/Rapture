@@ -3,15 +3,27 @@ import sys
 import psutil
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QGridLayout, QScrollArea
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
+import json
+import os
+
+# Import the CommandContextWidget
+from ui.widgets.command_context_widget import CommandContextWidget
 
 class ProfileWidget(QWidget):
-    """Widget to display system information"""
+    """Enhanced widget to display system information with command execution context selection"""
+    
+    context_updated = pyqtSignal(dict)  # Signal emitted when command context is updated
+    
     def __init__(self):
         super().__init__()
         self.current_theme = "Nord Dark (Default)"
         self.current_font_size = "Medium (Default)"
         self.setup_ui()
+
+    def get_system_info_dict(self):
+        """Returns the system information as a dictionary for easy sharing with other components"""
+        return self.system_info
         
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -23,6 +35,12 @@ class ProfileWidget(QWidget):
         self.header.setFont(QFont("Arial", 16, QFont.Bold))
         self.header.setStyleSheet("color: #ECEFF4;")
         layout.addWidget(self.header)
+        
+        # Command Context Widget - New Addition
+        self.command_context_widget = CommandContextWidget()
+        # Connect the internal signal to our forwarding signal
+        self.command_context_widget.context_changed.connect(self.forward_context_change)
+        layout.addWidget(self.command_context_widget)
         
         # System information widget
         self.info_frame = QFrame()
@@ -41,6 +59,17 @@ class ProfileWidget(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.NoFrame)
         layout.addWidget(self.scroll_area)
+    
+    def forward_context_change(self, context_info):
+        """Forward the command context change signal"""
+        # Log for debugging
+        print(f"ProfileWidget forwarding context update: {context_info['name']} - {context_info['path']}")
+        # Forward the signal to listeners (like MainWindow and AIChatWidget)
+        self.context_updated.emit(context_info)
+    
+    def get_command_context(self):
+        """Get the current command execution context"""
+        return self.command_context_widget.get_active_context()
     
     def populate_system_info(self):
         """Populate the grid with system information"""
@@ -193,6 +222,9 @@ class ProfileWidget(QWidget):
         # Apply styles to scroll area
         self.scroll_area.setStyleSheet(f"background-color: {colors['main_bg']}; border: none;")
         
+        # Update command context widget theme
+        self.command_context_widget.update_theme(theme_name)
+        
         # Refresh system info display to apply new styles
         self.populate_system_info()
         
@@ -252,6 +284,9 @@ class ProfileWidget(QWidget):
         
         # Update header font
         self.header.setFont(QFont("Arial", sizes["header"], QFont.Bold))
+        
+        # Update command context widget font sizes
+        self.command_context_widget.update_font_size(font_size_name)
         
         # Refresh system info display to apply new font sizes
         self.populate_system_info()
